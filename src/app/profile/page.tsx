@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User } from '../types/auth';
+import Image from 'next/image';
 
 /**
  * 用户个人资料页面
@@ -112,7 +113,13 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center">
             <div className="w-40 h-40 rounded-full overflow-hidden mb-4 bg-gray-200 flex items-center justify-center border-2 border-love-300">
               {avatarUrl ? (
-                <img src={avatarUrl} alt="用户头像" className="w-full h-full object-cover" />
+                <Image 
+                  src={avatarUrl} 
+                  alt="用户头像" 
+                  width={160} 
+                  height={160} 
+                  className="w-full h-full object-cover" 
+                />
               ) : (
                 <span className="text-5xl text-love-300">
                   {displayName ? displayName.charAt(0).toUpperCase() : '?'}

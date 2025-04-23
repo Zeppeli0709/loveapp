@@ -156,7 +156,7 @@ export default function PartnerManager() {
               <div key={request.id} className="border rounded-lg p-3 bg-gray-50">
                 <p className="mb-2">有人想成为您的伴侣</p>
                 {request.message && (
-                  <p className="text-gray-600 mb-2">"{request.message}"</p>
+                  <p className="text-gray-600 mb-2">&ldquo;{request.message}&rdquo;</p>
                 )}
                 <div className="flex space-x-2 justify-end">
                   <button 

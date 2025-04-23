@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Anniversary } from '../../types/anniversary';
 
 export default function AnniversaryList() {
-  const { currentUser, partner, relationship } = useAuth();
+  const { partner, relationship } = useAuth();
   const [anniversaries, setAnniversaries] = useState<Anniversary[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [title, setTitle] = useState('');

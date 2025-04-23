@@ -148,7 +148,7 @@ export default function TodoList() {
                 <select
                   className="select select-bordered w-full"
                   value={priority}
-                  onChange={e => setPriority(e.target.value as any)}
+                  onChange={e => setPriority(e.target.value as 'low' | 'medium' | 'high')}
                 >
                   <option value="low">低优先级</option>
                   <option value="medium">中优先级</option>
@@ -177,7 +177,7 @@ export default function TodoList() {
                 <select
                   className="select select-bordered w-full"
                   value={partnerTag}
-                  onChange={e => setPartnerTag(e.target.value as any)}
+                  onChange={e => setPartnerTag(e.target.value as 'self' | 'partner' | 'both')}
                 >
                   <option value="self">我的</option>
                   <option value="partner">伴侣的</option>
@@ -192,7 +192,7 @@ export default function TodoList() {
                 <select
                   className="select select-bordered w-full"
                   value={loveType}
-                  onChange={e => setLoveType(e.target.value as any)}
+                  onChange={e => setLoveType(e.target.value as 'gift' | 'date' | 'care' | 'message' | 'other')}
                 >
                   <option value="gift">礼物</option>
                   <option value="date">约会</option>
@@ -218,7 +218,7 @@ export default function TodoList() {
             <select
               className="select select-bordered w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
               value={filter}
-              onChange={e => setFilter(e.target.value as any)}
+              onChange={e => setFilter(e.target.value as 'all' | 'active' | 'completed')}
             >
               <option value="all">所有状态</option>
               <option value="active">待完成</option>
@@ -230,7 +230,7 @@ export default function TodoList() {
             <select
               className="select select-bordered w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
               value={tagFilter}
-              onChange={e => setTagFilter(e.target.value as any)}
+              onChange={e => setTagFilter(e.target.value as 'all' | 'self' | 'partner' | 'both')}
             >
               <option value="all">所有对象</option>
               <option value="self">我的</option>
@@ -243,7 +243,7 @@ export default function TodoList() {
             <select
               className="select select-bordered w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
               value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value as any)}
+              onChange={e => setTypeFilter(e.target.value as 'all' | 'gift' | 'date' | 'care' | 'message' | 'other')}
             >
               <option value="all">所有类型</option>
               <option value="gift">礼物</option>
