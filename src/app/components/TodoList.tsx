@@ -120,22 +120,22 @@ export default function TodoList() {
 
   return (
     <div className="max-w-3xl mx-auto p-4">
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8 border-2 border-love-300">
-        <h2 className="text-2xl font-bold text-love-500 mb-4 text-center">💑 恋爱清单 💑</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8 border-2 border-love-300 dark:border-love-700">
+        <h2 className="text-2xl font-bold text-love-500 dark:text-love-300 mb-4 text-center">💑 恋爱清单 💑</h2>
         
         {/* 添加新待办事项表单 */}
-        <div className="card bg-love-100 shadow p-4 mb-6">
+        <div className="card bg-love-100 dark:bg-gray-700 shadow p-4 mb-6">
           <div className="form-control">
             <input
               type="text"
               placeholder="添加新的爱的待办事项"
-              className="input input-bordered border-love-300 focus:border-love-500 mb-2"
+              className="input input-bordered border-love-300 dark:border-love-600 focus:border-love-500 mb-2 dark:bg-gray-600 dark:text-white"
               value={title}
               onChange={e => setTitle(e.target.value)}
             />
             <textarea
               placeholder="描述（可选）"
-              className="textarea textarea-bordered border-love-300 focus:border-love-500 mb-2"
+              className="textarea textarea-bordered border-love-300 dark:border-love-600 focus:border-love-500 mb-2 dark:bg-gray-600 dark:text-white"
               value={description}
               onChange={e => setDescription(e.target.value)}
             />
@@ -204,7 +204,7 @@ export default function TodoList() {
             </div>
             
             <button
-              className="btn btn-primary bg-love-500 hover:bg-love-600 border-none"
+              className="btn btn-primary bg-love-500 hover:bg-love-600 border-none dark:bg-love-600 dark:hover:bg-love-700"
               onClick={addTodo}
             >
               添加爱的待办
@@ -216,7 +216,7 @@ export default function TodoList() {
         <div className="flex flex-wrap gap-2 justify-between mb-6">
           <div className="flex-1 min-w-[150px]">
             <select
-              className="select select-bordered w-full"
+              className="select select-bordered w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
               value={filter}
               onChange={e => setFilter(e.target.value as any)}
             >
@@ -228,7 +228,7 @@ export default function TodoList() {
           
           <div className="flex-1 min-w-[150px]">
             <select
-              className="select select-bordered w-full"
+              className="select select-bordered w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
               value={tagFilter}
               onChange={e => setTagFilter(e.target.value as any)}
             >
@@ -241,7 +241,7 @@ export default function TodoList() {
           
           <div className="flex-1 min-w-[150px]">
             <select
-              className="select select-bordered w-full"
+              className="select select-bordered w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
               value={typeFilter}
               onChange={e => setTypeFilter(e.target.value as any)}
             >
@@ -259,7 +259,7 @@ export default function TodoList() {
         <div>
           {filteredTodos.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">暂无待办事项，快去添加吧！</p>
+              <p className="text-gray-500 dark:text-gray-400">暂无待办事项，快去添加吧！</p>
               <div className="text-5xl mt-4">💕</div>
             </div>
           ) : (
@@ -277,7 +277,7 @@ export default function TodoList() {
         
         {/* 底部统计信息 */}
         {todos.length > 0 && (
-          <div className="text-sm text-gray-500 mt-6 text-center">
+          <div className="text-sm text-gray-500 dark:text-gray-400 mt-6 text-center">
             共 {todos.length} 项，已完成 {todos.filter(t => t.completed).length} 项
           </div>
         )}

@@ -5,6 +5,7 @@ module.exports = {
       './src/components/**/*.{js,ts,jsx,tsx,mdx}',
       './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     ],
+    darkMode: 'class',
     theme: {
       extend: {
         colors: {
@@ -39,6 +40,17 @@ module.exports = {
             'base-100': '#ffffff',
             'base-200': '#f9fafb',
             'base-300': '#f3f4f6',
+          },
+        },
+        {
+          loveDarkTheme: {
+            primary: '#ff6b81',
+            secondary: '#451e25',
+            accent: '#ff8c9d',
+            neutral: '#d6d6d6',
+            'base-100': '#1f2937',
+            'base-200': '#111827',
+            'base-300': '#0f172a',
           },
         },
       ],

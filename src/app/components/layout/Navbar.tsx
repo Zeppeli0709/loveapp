@@ -37,17 +37,17 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-md py-3">
+    <nav className="bg-white dark:bg-gray-800 shadow-md py-3">
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2">
-            <span className="text-love-500 text-2xl">❤️</span>
-            <span className="font-bold text-xl text-love-600">恋爱清单</span>
+            <span className="text-love-500 dark:text-love-300 text-2xl">❤️</span>
+            <span className="font-bold text-xl text-love-600 dark:text-love-400">恋爱清单</span>
           </Link>
 
           {/* 移动端菜单按钮 */}
           <button 
-            className="md:hidden text-gray-600"
+            className="md:hidden text-gray-600 dark:text-gray-300"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -63,21 +63,21 @@ export default function Navbar() {
           <div className="hidden md:flex items-center space-x-4">
             {isAuthenticated ? (
               <>
-                <Link href="/dashboard" className="text-gray-600 hover:text-love-500">
+                <Link href="/dashboard" className="text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300">
                   待办清单
                 </Link>
-                <Link href="/relationship" className="text-gray-600 hover:text-love-500">
+                <Link href="/relationship" className="text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300">
                   伴侣关系
                 </Link>
                 {partner && (
-                  <Link href="/anniversaries" className="text-gray-600 hover:text-love-500">
+                  <Link href="/anniversaries" className="text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300">
                     纪念日
                   </Link>
                 )}
                 <div className="relative">
                   <button 
                     ref={buttonRef}
-                    className="flex items-center space-x-1 text-gray-600 hover:text-love-500"
+                    className="flex items-center space-x-1 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
                     onClick={toggleUserMenu}
                   >
                     <span>{currentUser?.displayName || '用户'}</span>
@@ -88,18 +88,18 @@ export default function Navbar() {
                   {isUserMenuOpen && (
                     <div 
                       ref={menuRef}
-                      className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10"
+                      className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg py-1 z-10"
                     >
                       <Link 
                         href="/profile" 
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-love-50"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-love-50 dark:hover:bg-gray-600"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
                         个人资料
                       </Link>
                       <Link 
                         href="/settings" 
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-love-50"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-love-50 dark:hover:bg-gray-600"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
                         设置
@@ -109,7 +109,7 @@ export default function Navbar() {
                           logout();
                           setIsUserMenuOpen(false);
                         }}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-love-50"
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-love-50 dark:hover:bg-gray-600"
                       >
                         退出登录
                       </button>
@@ -119,7 +119,7 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Link href="/auth/login" className="text-gray-600 hover:text-love-500">
+                <Link href="/auth/login" className="text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300">
                   登录
                 </Link>
                 <Link href="/auth/register" className="btn btn-sm btn-primary bg-love-500 hover:bg-love-600 text-white border-none">
@@ -137,14 +137,14 @@ export default function Navbar() {
               <>
                 <Link 
                   href="/dashboard" 
-                  className="block py-2 text-gray-600 hover:text-love-500"
+                  className="block py-2 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   待办清单
                 </Link>
                 <Link 
                   href="/relationship" 
-                  className="block py-2 text-gray-600 hover:text-love-500"
+                  className="block py-2 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   伴侣关系
@@ -152,7 +152,7 @@ export default function Navbar() {
                 {partner && (
                   <Link 
                     href="/anniversaries" 
-                    className="block py-2 text-gray-600 hover:text-love-500"
+                    className="block py-2 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     纪念日
@@ -160,14 +160,14 @@ export default function Navbar() {
                 )}
                 <Link 
                   href="/profile" 
-                  className="block py-2 text-gray-600 hover:text-love-500"
+                  className="block py-2 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   个人资料
                 </Link>
                 <Link 
                   href="/settings" 
-                  className="block py-2 text-gray-600 hover:text-love-500"
+                  className="block py-2 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   设置
@@ -177,7 +177,7 @@ export default function Navbar() {
                     logout();
                     setIsMenuOpen(false);
                   }}
-                  className="block w-full text-left py-2 text-gray-600 hover:text-love-500"
+                  className="block w-full text-left py-2 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
                 >
                   退出登录
                 </button>
@@ -186,14 +186,14 @@ export default function Navbar() {
               <>
                 <Link 
                   href="/auth/login" 
-                  className="block py-2 text-gray-600 hover:text-love-500"
+                  className="block py-2 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   登录
                 </Link>
                 <Link 
                   href="/auth/register" 
-                  className="block py-2 text-gray-600 hover:text-love-500"
+                  className="block py-2 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   注册

@@ -112,7 +112,7 @@ export default function TodoItem({ todo, onDelete, onToggle, onEdit }: TodoItemP
   const { style, text } = getPartnerTagInfo();
 
   return (
-    <div className={`card bg-base-100 shadow-md hover:shadow-lg transition-shadow duration-300 mb-4 border-l-4 ${todo.completed ? 'border-green-500 opacity-75' : 'border-primary'}`}>
+    <div className={`card bg-base-100 dark:bg-gray-700 shadow-md hover:shadow-lg transition-shadow duration-300 mb-4 border-l-4 ${todo.completed ? 'border-green-500 opacity-75' : 'border-primary'}`}>
       <div className="card-body p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center">
@@ -122,12 +122,12 @@ export default function TodoItem({ todo, onDelete, onToggle, onEdit }: TodoItemP
               onChange={() => onToggle(todo.id)}
               className="checkbox checkbox-primary mr-3"
             />
-            <h3 className={`text-lg font-medium ${todo.completed ? 'line-through text-gray-500' : ''}`}>
+            <h3 className={`text-lg font-medium ${todo.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'dark:text-white'}`}>
               {todo.title}
             </h3>
           </div>
           <div className="flex space-x-1">
-            <button onClick={() => setIsEditing(true)} className="btn btn-sm btn-ghost btn-square">
+            <button onClick={() => setIsEditing(true)} className="btn btn-sm btn-ghost btn-square dark:text-gray-300">
               ✏️
             </button>
             <button onClick={() => onDelete(todo.id)} className="btn btn-sm btn-ghost btn-square text-red-500">
@@ -137,7 +137,7 @@ export default function TodoItem({ todo, onDelete, onToggle, onEdit }: TodoItemP
         </div>
         
         {todo.description && (
-          <p className={`mt-2 text-gray-600 ${todo.completed ? 'line-through' : ''}`}>
+          <p className={`mt-2 text-gray-600 dark:text-gray-300 ${todo.completed ? 'line-through' : ''}`}>
             {todo.description}
           </p>
         )}
