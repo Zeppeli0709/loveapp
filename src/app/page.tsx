@@ -46,7 +46,7 @@ export default function HomePage() {
           </div>
         </div>
         
-        <div className="mt-20 grid md:grid-cols-3 gap-8">
+        <div className="mt-20 grid md:grid-cols-4 gap-6">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center">
             <div className="text-4xl mb-4">📝</div>
             <h2 className="text-xl font-bold text-love-500 dark:text-love-300 mb-2">爱的待办事项</h2>
@@ -60,9 +60,50 @@ export default function HomePage() {
           </div>
           
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center">
+            <div className="text-4xl mb-4">🎁</div>
+            <h2 className="text-xl font-bold text-love-500 dark:text-love-300 mb-2">积分与礼物</h2>
+            <p className="text-gray-600 dark:text-gray-300">完成爱的任务获取积分，兑换浪漫礼物增进感情</p>
+          </div>
+          
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center">
             <div className="text-4xl mb-4">💖</div>
             <h2 className="text-xl font-bold text-love-500 dark:text-love-300 mb-2">真心连接</h2>
             <p className="text-gray-600 dark:text-gray-300">和伴侣共同管理生活中的大小事，让爱更加深厚</p>
+          </div>
+        </div>
+        
+        {/* 特色功能 */}
+        <div className="mt-24">
+          <h2 className="text-3xl font-bold text-center text-love-600 dark:text-love-400 mb-12">特色功能</h2>
+          
+          <div className="grid md:grid-cols-2 gap-12">
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
+              <div className="text-4xl mb-4">⭐</div>
+              <h3 className="text-2xl font-bold text-love-500 dark:text-love-300 mb-3">积分奖励系统</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                每完成一项爱的任务都能获得积分，伴侣互相审核确认任务完成度，激励彼此更加用心经营感情。
+              </p>
+              <ul className="text-gray-600 dark:text-gray-300 space-y-2 list-disc pl-5">
+                <li>自定义任务积分值</li>
+                <li>伴侣审核确认机制</li>
+                <li>积分历史记录查询</li>
+                <li>设置不同优先级任务</li>
+              </ul>
+            </div>
+            
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
+              <div className="text-4xl mb-4">🎁</div>
+              <h3 className="text-2xl font-bold text-love-500 dark:text-love-300 mb-3">浪漫礼物兑换</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                用积累的爱心积分兑换各种浪漫礼物，从虚拟爱心到现实约定，增进感情的同时留下美好回忆。
+              </p>
+              <ul className="text-gray-600 dark:text-gray-300 space-y-2 list-disc pl-5">
+                <li>多种礼物类型选择</li>
+                <li>鲜花、宠物、戒指等</li>
+                <li>兑换历史记录</li>
+                <li>礼物兑换提醒</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

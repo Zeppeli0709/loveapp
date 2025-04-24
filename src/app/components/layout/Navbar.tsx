@@ -70,9 +70,14 @@ export default function Navbar() {
                   伴侣关系
                 </Link>
                 {partner && (
-                  <Link href="/anniversaries" className="text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300">
-                    纪念日
-                  </Link>
+                  <>
+                    <Link href="/anniversaries" className="text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300">
+                      纪念日
+                    </Link>
+                    <Link href="/gifts" className="text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300">
+                      礼物兑换
+                    </Link>
+                  </>
                 )}
                 <div className="relative">
                   <button 
@@ -150,13 +155,22 @@ export default function Navbar() {
                   伴侣关系
                 </Link>
                 {partner && (
-                  <Link 
-                    href="/anniversaries" 
-                    className="block py-2 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    纪念日
-                  </Link>
+                  <>
+                    <Link 
+                      href="/anniversaries" 
+                      className="block py-2 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      纪念日
+                    </Link>
+                    <Link 
+                      href="/gifts" 
+                      className="block py-2 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      礼物兑换
+                    </Link>
+                  </>
                 )}
                 <Link 
                   href="/profile" 

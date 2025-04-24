@@ -3,6 +3,7 @@
 import './globals.css';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
 import { Geist as GeistSans, Geist_Mono } from 'next/font/google';
 import { useState, useEffect } from 'react';
 
@@ -82,12 +83,13 @@ export default function RootLayout({
 
   return (
     <html lang="zh-CN" data-theme={theme} className={darkMode ? 'dark' : ''}>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
         <AuthProvider>
           <Navbar />
-          <main className="min-h-[calc(100vh-64px)]">
+          <main className="flex-grow">
             {children}
           </main>
+          <Footer />
         </AuthProvider>
       </body>
     </html>

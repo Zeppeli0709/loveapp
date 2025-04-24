@@ -16,6 +16,8 @@ interface AuthContextType {
   acceptRelationshipRequest: (requestId: string) => Promise<boolean>;
   rejectRelationshipRequest: (requestId: string) => Promise<boolean>;
   searchUsers: (query: string) => Promise<User[]>;
+  addPartner: (partner: User) => void;
+  rebuildRelationship: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,8 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 从本地存储加载用户数据
   useEffect(() => {
+    const rememberLogin = localStorage.getItem('rememberLogin');
     const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
+    
+    if (rememberLogin === 'true' && storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
         setCurrentUser(parsedUser);
@@ -40,6 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loadRelationshipData(parsedUser.id);
       } catch (e) {
         console.error('解析用户数据时出错:', e);
+        // 如果出错，清除可能损坏的数据
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('rememberLogin');
       }
     }
   }, []);
@@ -111,7 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (user && passwordsMap[user.id] === password) {
           setCurrentUser(user);
           setIsAuthenticated(true);
+          
+          // 使用localStorage永久保存用户登录状态
           localStorage.setItem('currentUser', JSON.stringify(user));
+          
+          // 添加记住登录状态的标记
+          localStorage.setItem('rememberLogin', 'true');
           
           // 加载关系数据
           loadRelationshipData(user.id);
@@ -162,6 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCurrentUser(newUser);
       setIsAuthenticated(true);
       localStorage.setItem('currentUser', JSON.stringify(newUser));
+      localStorage.setItem('rememberLogin', 'true');
       
       return true;
     } catch (e) {
@@ -178,6 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPendingRequests([]);
     setIsAuthenticated(false);
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('rememberLogin');
   };
 
   // 发送关系请求
@@ -334,6 +348,89 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * 强制重建用户关系
+   */
+  const rebuildRelationship = () => {
+    console.log("尝试重建用户关系数据");
+    
+    // 检查是否有当前用户
+    if (!currentUser) {
+      console.error("无法重建关系：当前用户不存在");
+      return false;
+    }
+    
+    // 从localStorage获取所有用户
+    const storedUsers = localStorage.getItem('users');
+    if (!storedUsers) {
+      console.error("无法重建关系：未找到用户数据");
+      return false;
+    }
+    
+    try {
+      const parsedUsers = JSON.parse(storedUsers);
+      console.log("找到用户数据:", parsedUsers.length, "个用户");
+      
+      // 查找伴侣
+      let foundPartner = null;
+      for (const user of parsedUsers) {
+        // 跳过当前用户
+        if (user.id === currentUser.id) continue;
+        
+        console.log("检查潜在伴侣:", user.username);
+        foundPartner = user;
+        break;
+      }
+      
+      if (!foundPartner) {
+        console.error("无法重建关系：未找到伴侣用户");
+        return false;
+      }
+      
+      // 创建或更新关系
+      const storedRelationships = localStorage.getItem('relationships');
+      let relationships = [];
+      
+      if (storedRelationships) {
+        relationships = JSON.parse(storedRelationships);
+        
+        // 查找已存在的关系
+        const existingRelationship = relationships.find(
+          (r: any) => (r.user1Id === currentUser.id && r.user2Id === foundPartner.id) ||
+                     (r.user1Id === foundPartner.id && r.user2Id === currentUser.id)
+        );
+        
+        if (existingRelationship) {
+          console.log("找到现有关系:", existingRelationship.id);
+          setRelationship(existingRelationship);
+          setPartner(foundPartner);
+          return true;
+        }
+      }
+      
+      // 创建新关系
+      const newRelationship = {
+        id: Date.now().toString(),
+        user1Id: currentUser.id,
+        user2Id: foundPartner.id,
+        status: 'active',
+        createdAt: new Date(),
+        startDate: new Date()
+      };
+      
+      relationships.push(newRelationship);
+      localStorage.setItem('relationships', JSON.stringify(relationships));
+      
+      console.log("创建了新的关系:", newRelationship.id);
+      setRelationship(newRelationship);
+      setPartner(foundPartner);
+      return true;
+    } catch (e) {
+      console.error("重建关系时出错:", e);
+      return false;
+    }
+  };
+
   const value = {
     currentUser,
     partner,
@@ -347,6 +444,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     acceptRelationshipRequest,
     rejectRelationshipRequest,
     searchUsers,
+    addPartner: setPartner,
+    rebuildRelationship
   };
   
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
