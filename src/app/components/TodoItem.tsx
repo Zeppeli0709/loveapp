@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Todo } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -15,47 +15,68 @@ interface TodoItemProps {
   /** 更新待办事项的回调函数 */
   onToggle: (id: string) => void;
   /** 编辑待办事项的回调函数 */
-  onEdit: (todo: Todo) => void;
+  onEdit: (editedTodo: Todo) => void;
   /** 提交审核的回调函数 */
-  onSubmitReview: (todoId: string) => void;
+  onSubmitReview: (id: string) => void;
   /** 批准任务的回调函数 */
   onApproveTask: (todoId: string, points: number, comment?: string) => void;
   /** 拒绝任务的回调函数 */
   onRejectTask: (todoId: string, comment: string) => void;
 }
 
+// 格式化日期函数
+const formatDate = (date: Date | string): string => {
+  if (!date) return '';
+  const d = new Date(date);
+  return d.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
+
 /**
- * 显示单个待办事项的组件
+ * TodoItem组件，用于显示单个待办事项
+ * @param props TodoItemProps类型的属性
+ * @returns TodoItem组件
  */
-export default function TodoItem({ 
-  todo, 
-  onDelete, 
-  onToggle, 
-  onEdit, 
-  onSubmitReview, 
-  onApproveTask, 
-  onRejectTask 
-}: TodoItemProps) {
+const TodoItem: React.FC<TodoItemProps> = ({
+  todo,
+  onDelete,
+  onToggle,
+  onEdit,
+  onSubmitReview,
+  onApproveTask,
+  onRejectTask
+}) => {
   const { currentUser, partner, relationship } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [editedTitle, setEditedTitle] = useState(todo.title);
-  const [editedDescription, setEditedDescription] = useState(todo.description || '');
-  const [editedPoints, setEditedPoints] = useState(todo.points || 10);
-  const [reviewComment, setReviewComment] = useState('');
+  const [title, setTitle] = useState(todo.title);
+  const [description, setDescription] = useState(todo.description || '');
+  const [points, setPoints] = useState(todo.points || 10);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewComments, setReviewComments] = useState('');
 
   // 检查当前用户是否是任务的创建者
   const isCreator = currentUser?.id === todo.createdById;
-  // 检查当前用户是否可以审核任务（非创建者且伴侣）
-  const canReview = !isCreator && todo.partnerTag !== 'self';
+  
+  // 检查是否能审核（非创建者且任务处于待审核状态）
+  const userCanReview = currentUser && todo.reviewStatus === 'pending' && !isCreator;
+
+  // 检查任务是否已被审核（approved或rejected）
+  const isReviewed = todo.reviewStatus === 'approved' || todo.reviewStatus === 'rejected';
 
   // 获取优先级对应的颜色样式
   const getPriorityColor = () => {
     switch (todo.priority) {
-      case 'high': return 'bg-red-100 text-red-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'low': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'high':
+        return 'border-l-4 border-red-500';
+      case 'medium':
+        return 'border-l-4 border-yellow-500';
+      case 'low':
+        return 'border-l-4 border-green-500';
+      default:
+        return 'border-l-4 border-gray-300';
     }
   };
 
@@ -90,107 +111,136 @@ export default function TodoItem({
     }
   };
 
+  // 修复 linter 错误：使用正确的 reviewStatus 类型
+  const isTaskPending = todo.reviewStatus === 'pending';
+  const isTaskApproved = todo.reviewStatus === 'approved';
+  const isTaskRejected = todo.reviewStatus === 'rejected';
+  const isTaskNotSubmitted = todo.reviewStatus === 'not_submitted';
+
   // 保存编辑内容
-  const handleSaveEdit = () => {
-    onEdit({
+  const handleSave = () => {
+    const updatedTodo = {
       ...todo,
-      title: editedTitle,
-      description: editedDescription,
-      points: editedPoints
-    });
+      title,
+      description,
+      points
+    };
+    onEdit(updatedTodo);
     setIsEditing(false);
   };
 
   // 取消编辑
   const handleCancelEdit = () => {
-    setEditedTitle(todo.title);
-    setEditedDescription(todo.description || '');
-    setEditedPoints(todo.points || 10);
+    setTitle(todo.title);
+    setDescription(todo.description || '');
+    setPoints(todo.points || 10);
     setIsEditing(false);
   };
 
   // 处理提交审核
-  const handleSubmitReview = () => {
-    console.log("请求提交任务审核:", todo.id, todo.title);
-    
-    // 验证任务是否已完成
-    if (!todo.completed) {
-      alert("只有已完成的任务才能提交审核");
-      return;
-    }
-    
-    // 验证当前用户是否是任务的创建者
-    if (!isCreator) {
-      alert("只有任务创建者才能提交审核");
-      return;
-    }
-    
-    // 验证任务状态
-    if (todo.reviewStatus !== 'not_submitted') {
-      alert("该任务已经处于审核流程中或已被审核");
-      return;
-    }
-    
-    // 调用父组件传入的提交审核函数
+  const handleSubmitForReview = () => {
     onSubmitReview(todo.id);
   };
 
-  // 处理审核批准
-  const handleApprove = () => {
-    onApproveTask(todo.id, editedPoints, reviewComment);
+  // 处理审核表单提交
+  const handleReviewSubmit = (isApproved: boolean) => {
+    if (isApproved) {
+      onApproveTask(todo.id, points, reviewComments);
+    } else {
+      onRejectTask(todo.id, reviewComments);
+    }
     setShowReviewForm(false);
-    setReviewComment('');
+    setReviewComments('');
   };
 
-  // 处理审核拒绝
-  const handleReject = () => {
-    onRejectTask(todo.id, reviewComment);
-    setShowReviewForm(false);
-    setReviewComment('');
-  };
-
-  // 格式化日期显示
-  const formatDate = (date?: Date) => {
-    if (!date) return '无日期';
-    return new Date(date).toLocaleDateString('zh-CN');
+  // 检查当前用户是否有权限处理待办事项，根据状态决定显示哪些操作按钮
+  const renderActionButtons = () => {
+    // 是否正在编辑
+    if (showReviewForm || isEditing) return null;
+    
+    return (
+      <div className="flex justify-end space-x-2 mt-2">
+        {/* 编辑按钮 - 只有创建者可见 */}
+        {isCreator && todo.reviewStatus !== 'pending' && (
+          <button
+            className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+            onClick={() => setIsEditing(true)}
+          >
+            编辑
+          </button>
+        )}
+        
+        {/* 删除按钮 - 只有创建者可见且非审核中 */}
+        {isCreator && todo.reviewStatus !== 'pending' && (
+          <button
+            className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+            onClick={() => onDelete(todo.id)}
+          >
+            删除
+          </button>
+        )}
+        
+        {/* 提交审核按钮 - 已完成但未提交审核时可见 */}
+        {isCreator && todo.completed && todo.reviewStatus === 'not_submitted' && (
+          <button
+            className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
+            onClick={handleSubmitForReview}
+          >
+            提交审核
+          </button>
+        )}
+        
+        {/* 审核按钮 - 非创建者且任务待审核时可见 */}
+        {!isCreator && todo.reviewStatus === 'pending' && (
+          <button
+            className="px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+            onClick={() => setShowReviewForm(true)}
+          >
+            审核
+          </button>
+        )}
+      </div>
+    );
   };
 
   // 编辑模式渲染
   if (isEditing) {
     return (
-      <div className="card bg-base-100 shadow-md hover:shadow-lg transition-shadow duration-300 mb-4 border-l-4 border-primary">
-        <div className="card-body p-4">
+      <div className={`mb-4 p-4 bg-white rounded shadow ${getPriorityColor()}`}>
+        <input
+          type="text"
+          className="w-full mb-2 p-2 border rounded"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <textarea
+          className="w-full mb-2 p-2 border rounded"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        <div className="mb-2">
+          <label className="mr-2">积分:</label>
           <input
-            type="text"
-            value={editedTitle}
-            onChange={(e) => setEditedTitle(e.target.value)}
-            className="input input-bordered w-full mb-2"
-            placeholder="待办事项标题"
+            type="number"
+            className="p-1 border rounded w-20"
+            value={points}
+            onChange={(e) => setPoints(parseInt(e.target.value) || 0)}
+            min="0"
           />
-          <textarea
-            value={editedDescription}
-            onChange={(e) => setEditedDescription(e.target.value)}
-            className="textarea textarea-bordered w-full mb-2"
-            placeholder="详细描述"
-            rows={2}
-          />
-          <div className="form-control mb-2">
-            <label className="label">
-              <span className="label-text">积分值 (1-100)</span>
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={editedPoints}
-              onChange={(e) => setEditedPoints(Number(e.target.value))}
-              className="input input-bordered w-full"
-            />
-          </div>
-          <div className="flex justify-end space-x-2 mt-2">
-            <button onClick={handleCancelEdit} className="btn btn-sm btn-ghost">取消</button>
-            <button onClick={handleSaveEdit} className="btn btn-sm btn-primary">保存</button>
-          </div>
+        </div>
+        <div className="flex justify-end space-x-2">
+          <button
+            className="px-3 py-1 bg-gray-300 text-gray-700 rounded"
+            onClick={handleCancelEdit}
+          >
+            取消
+          </button>
+          <button
+            className="px-3 py-1 bg-blue-500 text-white rounded"
+            onClick={handleSave}
+          >
+            保存
+          </button>
         </div>
       </div>
     );
@@ -199,61 +249,64 @@ export default function TodoItem({
   // 审核表单
   if (showReviewForm) {
     return (
-      <div className="card bg-base-100 dark:bg-gray-700 shadow-md hover:shadow-lg transition-shadow duration-300 mb-4 border-l-4 border-yellow-500">
-        <div className="card-body p-4">
-          <h3 className="text-lg font-medium mb-2">审核任务: {todo.title}</h3>
-          
-          <div className="mb-4">
-            <p className="text-gray-600 dark:text-gray-300 mb-1">原始积分: {todo.points} 点</p>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">调整积分 (可选)</span>
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={editedPoints}
-                onChange={(e) => setEditedPoints(Number(e.target.value))}
-                className="input input-bordered w-full"
-              />
-            </div>
+      <div className={`mb-4 p-4 bg-white rounded shadow ${getPriorityColor()}`}>
+        <h3 className="font-bold mb-2">{todo.title}</h3>
+        <p className="mb-2">{todo.description}</p>
+        
+        <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+          <p className="text-sm text-yellow-800 font-medium">您正在审核伴侣的任务，请认真评价。</p>
+        </div>
+        
+        <div className="mb-4">
+          <label className="block mb-1 font-medium">审核评论:</label>
+          <textarea
+            className="w-full p-2 border rounded focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            value={reviewComments}
+            onChange={(e) => setReviewComments(e.target.value)}
+            placeholder="添加您的审核评论..."
+            rows={3}
+          />
+        </div>
+        
+        <div className="mb-4">
+          <label className="block mb-1 font-medium">奖励积分: {points}</label>
+          <input 
+            type="range" 
+            min="1" 
+            max="50" 
+            value={points} 
+            onChange={(e) => setPoints(parseInt(e.target.value))}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+          />
+          <div className="flex justify-between text-xs text-gray-500 px-1">
+            <span>1</span>
+            <span>10</span>
+            <span>20</span>
+            <span>30</span>
+            <span>40</span>
+            <span>50</span>
           </div>
-          
-          <div className="form-control mb-4">
-            <label className="label">
-              <span className="label-text">审核评论</span>
-            </label>
-            <textarea
-              value={reviewComment}
-              onChange={(e) => setReviewComment(e.target.value)}
-              className="textarea textarea-bordered w-full"
-              placeholder="添加评论..."
-              rows={2}
-            />
-          </div>
-          
-          <div className="flex justify-end space-x-2 mt-2">
-            <button 
-              onClick={() => setShowReviewForm(false)} 
-              className="btn btn-sm btn-ghost"
-            >
-              取消
-            </button>
-            <button 
-              onClick={handleReject} 
-              className="btn btn-sm btn-error"
-              disabled={!reviewComment.trim()}
-            >
-              拒绝
-            </button>
-            <button 
-              onClick={handleApprove} 
-              className="btn btn-sm btn-success"
-            >
-              批准
-            </button>
-          </div>
+        </div>
+        
+        <div className="flex justify-end space-x-2">
+          <button
+            className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
+            onClick={() => setShowReviewForm(false)}
+          >
+            取消
+          </button>
+          <button
+            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            onClick={() => handleReviewSubmit(false)}
+          >
+            拒绝
+          </button>
+          <button
+            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+            onClick={() => handleReviewSubmit(true)}
+          >
+            批准
+          </button>
         </div>
       </div>
     );
@@ -265,94 +318,120 @@ export default function TodoItem({
   const { style: reviewStyle, text: reviewText } = getReviewStatusInfo();
 
   return (
-    <div className={`card bg-base-100 dark:bg-gray-700 shadow-md hover:shadow-lg transition-shadow duration-300 mb-4 border-l-4 ${todo.completed ? 'border-green-500 opacity-75' : 'border-primary'}`}>
-      <div className="card-body p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              checked={todo.completed}
-              onChange={() => onToggle(todo.id)}
-              className="checkbox checkbox-primary mr-3"
-              disabled={!isCreator || todo.reviewStatus === 'pending'}
-            />
-            <h3 className={`text-lg font-medium ${todo.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'dark:text-white'}`}>
-              {todo.title}
-            </h3>
-          </div>
-          <div className="flex space-x-1">
-            {isCreator && todo.reviewStatus !== 'pending' && (
-              <button onClick={() => setIsEditing(true)} className="btn btn-sm btn-ghost btn-square dark:text-gray-300">
-                ✏️
-              </button>
-            )}
-            {isCreator && (
-              <button onClick={() => onDelete(todo.id)} className="btn btn-sm btn-ghost btn-square text-red-500">
-                🗑️
-              </button>
-            )}
-          </div>
-        </div>
-        
-        {todo.description && (
-          <p className={`mt-2 text-gray-600 dark:text-gray-300 ${todo.completed ? 'line-through' : ''}`}>
-            {todo.description}
-          </p>
-        )}
-
-        <div className="mt-2 flex items-center">
-          <span className="text-love-600 font-semibold mr-2">积分: {todo.points}</span>
-          <span className={`badge ${reviewStyle} px-2 py-1`}>
-            {reviewText}
-          </span>
-        </div>
-        
-        {todo.reviewComment && (
-          <div className="mt-2 bg-gray-50 dark:bg-gray-600 p-2 rounded-md">
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              <span className="font-medium">审核评论:</span> {todo.reviewComment}
+    <div className={`mb-4 p-4 bg-white rounded shadow ${getPriorityColor()}`}>
+      <div className="flex items-start mb-2">
+        <input
+          type="checkbox"
+          className="mt-1 mr-2"
+          checked={todo.completed}
+          onChange={() => onToggle(todo.id)}
+          disabled={todo.reviewStatus === 'pending' || isReviewed}
+        />
+        <div className="flex-grow">
+          <h3 className={`font-bold ${todo.completed ? 'line-through' : ''}`}>
+            {todo.title}
+          </h3>
+          <p className={todo.completed ? 'line-through text-gray-500' : ''}>{todo.description}</p>
+          
+          {todo.dueDate && (
+            <p className="text-sm text-gray-600 mt-1">
+              截止日期: {formatDate(todo.dueDate)}
             </p>
-          </div>
-        )}
-        
-        <div className="flex flex-wrap gap-2 mt-3">
-          <span className={`badge ${getPriorityColor()} px-2 py-1`}>
-            {todo.priority === 'high' ? '高优先级' : todo.priority === 'medium' ? '中优先级' : '低优先级'}
-          </span>
-          <span className={`badge ${style} px-2 py-1`}>
-            {text}
-          </span>
-          <span className="badge bg-love-100 text-love-800 px-2 py-1">
-            {icon} {label}
-          </span>
-        </div>
-        
-        <div className="flex justify-between text-xs text-gray-500 mt-2">
-          <span>创建日期: {formatDate(todo.createdAt)}</span>
-          {todo.dueDate && <span>截止日期: {formatDate(todo.dueDate)}</span>}
-        </div>
-
-        {/* 操作按钮 */}
-        <div className="flex justify-end mt-3 space-x-2">
-          {isCreator && todo.completed && todo.reviewStatus === 'not_submitted' && (
-            <button 
-              onClick={handleSubmitReview} 
-              className="btn btn-sm btn-primary bg-love-500"
-            >
-              提交审核
-            </button>
           )}
           
-          {canReview && todo.reviewStatus === 'pending' && (
-            <button 
-              onClick={() => setShowReviewForm(true)} 
-              className="btn btn-sm btn-primary"
-            >
-              审核
-            </button>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {/* 优先级标签 */}
+            {todo.priority && (
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                todo.priority === 'high' ? 'bg-red-100 text-red-800' :
+                todo.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-green-100 text-green-800'
+              }`}>
+                {todo.priority === 'high' ? '高优先级' : 
+                 todo.priority === 'medium' ? '中优先级' : '低优先级'}
+              </span>
+            )}
+            
+            {/* 伴侣标签 */}
+            {todo.partnerTag && (
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                todo.partnerTag === 'self' ? 'bg-blue-100 text-blue-800' :
+                todo.partnerTag === 'partner' ? 'bg-pink-100 text-pink-800' :
+                'bg-purple-100 text-purple-800'
+              }`}>
+                {todo.partnerTag === 'self' ? '我的' : 
+                 todo.partnerTag === 'partner' ? '伴侣的' : '共同的'}
+              </span>
+            )}
+            
+            {/* 爱的类型标签 */}
+            {todo.loveType && (
+              <span className="text-xs bg-pink-100 text-pink-800 px-2 py-1 rounded-full">
+                {icon} {
+                  todo.loveType === 'gift' ? '礼物' :
+                  todo.loveType === 'date' ? '约会' :
+                  todo.loveType === 'care' ? '关心' :
+                  todo.loveType === 'message' ? '消息' : '其他'
+                }
+              </span>
+            )}
+            
+            {/* 积分标签 */}
+            <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
+              {todo.points} 积分
+            </span>
+            
+            {/* 审核状态标签 */}
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              todo.reviewStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+              todo.reviewStatus === 'approved' ? 'bg-green-100 text-green-800' :
+              todo.reviewStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {todo.reviewStatus === 'pending' ? '等待审核' : 
+               todo.reviewStatus === 'approved' ? '已批准' : 
+               todo.reviewStatus === 'rejected' ? '已拒绝' : '未提交'}
+            </span>
+          </div>
+          
+          {/* 审核评论显示 */}
+          {todo.reviewComment && (
+            <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded">
+              <p className="text-sm font-semibold text-gray-700">审核评论:</p>
+              <p className="text-sm text-gray-600">{todo.reviewComment}</p>
+            </div>
+          )}
+          
+          {/* 审核状态提示 */}
+          {isTaskPending && isCreator && (
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-100 rounded">
+              <p className="text-sm text-yellow-800">此任务正在等待伴侣审核，请耐心等待。</p>
+            </div>
+          )}
+          
+          {isTaskApproved && isCreator && (
+            <div className="mt-2 p-2 bg-green-50 border border-green-100 rounded">
+              <p className="text-sm text-green-800">恭喜！此任务已被批准，您已获得 {todo.points} 积分。</p>
+            </div>
+          )}
+          
+          {isTaskRejected && isCreator && (
+            <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded">
+              <p className="text-sm text-red-800">此任务被拒绝，请查看评论了解原因。</p>
+            </div>
+          )}
+          
+          {userCanReview && (
+            <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded">
+              <p className="text-sm text-blue-800">您的伴侣已完成此任务，请进行审核。</p>
+            </div>
           )}
         </div>
+        
+        {renderActionButtons()}
       </div>
     </div>
   );
-}
+};
+
+export default TodoItem;

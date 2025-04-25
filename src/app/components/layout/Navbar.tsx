@@ -85,7 +85,7 @@ export default function Navbar() {
                     className="flex items-center space-x-1 text-gray-600 dark:text-gray-200 hover:text-love-500 dark:hover:text-love-300"
                     onClick={toggleUserMenu}
                   >
-                    <span>{currentUser?.displayName || '用户'}</span>
+                    <span>{currentUser?.name || '用户'}</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                     </svg>

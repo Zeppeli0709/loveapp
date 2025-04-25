@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePoints } from '../../contexts/PointsContext';
 import { Todo } from '../../types';
 import Link from 'next/link';
 
@@ -11,6 +12,7 @@ import Link from 'next/link';
  */
 export default function TaskReviewPage() {
   const { isAuthenticated, currentUser, partner, relationship } = useAuth();
+  const { addPoints } = usePoints();
   const router = useRouter();
   const [pendingTasks, setPendingTasks] = useState<Todo[]>([]);
   const [selectedTask, setSelectedTask] = useState<Todo | null>(null);
@@ -19,6 +21,9 @@ export default function TaskReviewPage() {
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [loadingMessage, setLoadingMessage] = useState<string>('正在加载待审核任务...');
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+  const [noPartner, setNoPartner] = useState(false);
+  const [noTasks, setNoTasks] = useState(false);
 
   // 加载等待审核的任务
   useEffect(() => {
@@ -27,67 +32,95 @@ export default function TaskReviewPage() {
       return;
     }
 
-    if (!currentUser || !partner || !relationship) {
-      console.error('用户、伴侣或关系数据缺失，无法加载审核任务');
-      setLoadingMessage('需要先登录并建立伴侣关系');
-      return;
-    }
-
-    console.log('加载审核任务...');
-    console.log('当前用户ID:', currentUser.id);
-    console.log('伴侣ID:', partner.id);
-    console.log('关系ID:', relationship.id);
-
-    const todosData = localStorage.getItem('loveTodos');
-    if (!todosData) {
-      console.log('本地存储中没有任务数据');
-      setLoadingMessage('没有找到任何待办任务');
-      return;
-    }
-
-    try {
-      const parsedTodos = JSON.parse(todosData, (key, value) => {
-        if (key === 'createdAt' || key === 'dueDate' || key === 'reviewedAt') {
-          return value ? new Date(value) : null;
+    console.log('加载审核任务组件初始化...');
+    
+    // 直接从localStorage加载待审核任务
+    const loadPendingTasks = () => {
+      try {
+        console.log('开始加载待审核任务...');
+        
+        // 从本地存储中获取待办事项
+        const storedTodos = localStorage.getItem('loveTodos');
+        if (!storedTodos) {
+          console.log('本地存储中没有任何待办事项');
+          setNoTasks(true);
+          setLoading(false);
+          return;
         }
-        return value;
-      });
-      console.log('从本地存储加载的任务总数:', parsedTodos.length);
-
-      // 筛选出需要当前用户审核的任务
-      // 1. 状态为pending的任务
-      // 2. 由伴侣创建的任务（当前用户需要审核）
-      // 3. 属于当前关系的任务
-      const tasksToReview = parsedTodos.filter((todo: Todo) => {
-        const isPending = todo.reviewStatus === 'pending';
-        const isCreatedByPartner = todo.createdById === partner.id;
-        const belongsToCurrentRelationship = todo.relationshipId === relationship?.id;
-        const shouldReview = isPending && isCreatedByPartner && belongsToCurrentRelationship;
         
-        console.log(`任务 "${todo.title}" 筛选结果:`);
-        console.log(`- 待审核状态: ${isPending}`);
-        console.log(`- 由伴侣创建: ${isCreatedByPartner} (任务创建者ID: ${todo.createdById}, 伴侣ID: ${partner.id})`);
-        console.log(`- 属于当前关系: ${belongsToCurrentRelationship} (任务关系ID: ${todo.relationshipId}, 当前关系ID: ${relationship?.id})`);
-        console.log(`- 最终结果: ${shouldReview}`);
+        // 获取当前用户、伴侣和关系信息
+        const storedUser = localStorage.getItem('currentUser');
+        const storedPartner = localStorage.getItem('partner');
+        const storedRelationship = localStorage.getItem('relationship');
         
-        return shouldReview;
-      });
-      
-      console.log('筛选后的待审核任务数量:', tasksToReview.length);
-      if (tasksToReview.length === 0) {
-        console.log('没有找到待审核的任务');
-        setLoadingMessage('目前没有待审核的任务');
-      } else {
-        console.log('待审核任务列表:', JSON.stringify(tasksToReview, null, 2));
+        if (!storedUser || !storedPartner || !storedRelationship) {
+          console.log('缺少必要的用户关系数据');
+          setNoPartner(true);
+          setLoading(false);
+          return;
+        }
+        
+        // 解析数据
+        const currentUser = JSON.parse(storedUser);
+        const partner = JSON.parse(storedPartner);
+        const relationship = JSON.parse(storedRelationship);
+        const parsedTodos = JSON.parse(storedTodos, (key, value) => {
+          if (key === 'createdAt' || key === 'dueDate' || key === 'reviewedAt') {
+            return value ? new Date(value) : null;
+          }
+          return value;
+        });
+        
+        console.log('从本地存储加载的任务总数:', parsedTodos.length);
+        console.log('当前用户ID:', currentUser.id);
+        console.log('伴侣ID:', partner.id);
+        console.log('关系ID:', relationship.id);
+        
+        // 筛选出需要当前用户审核的任务
+        // 1. 状态为pending的任务
+        // 2. 由伴侣创建的任务
+        // 3. 属于当前关系的任务
+        const tasksToReview = parsedTodos.filter((todo: Todo) => {
+          const isPending = todo.reviewStatus === 'pending';
+          const isCreatedByPartner = todo.createdById === partner.id;
+          const belongsToCurrentRelationship = todo.relationshipId === relationship.id;
+          
+          // 记录筛选详情，便于调试
+          if (isPending) {
+            console.log(`任务 "${todo.title}" 筛选详情:`);
+            console.log(`- 待审核状态: ${isPending ? '是' : '否'}`);
+            console.log(`- 由伴侣创建: ${isCreatedByPartner ? '是' : '否'} (创建者ID: ${todo.createdById || '未知'}, 伴侣ID: ${partner.id})`);
+            console.log(`- 属于当前关系: ${belongsToCurrentRelationship ? '是' : '否'} (关系ID: ${todo.relationshipId || '未知'}, 当前关系ID: ${relationship.id})`);
+          }
+          
+          return isPending && isCreatedByPartner && belongsToCurrentRelationship;
+        });
+        
+        console.log('筛选后待审核任务数量:', tasksToReview.length);
+        if (tasksToReview.length > 0) {
+          console.log('待审核任务列表:');
+          tasksToReview.forEach((task: Todo) => {
+            console.log(`- ${task.title} (ID: ${task.id}, 创建者: ${task.createdById})`);
+          });
+        } else {
+          console.log('没有找到待审核任务');
+        }
+        
+        // 更新状态
+        setPendingTasks(tasksToReview);
+        setNoTasks(tasksToReview.length === 0);
+        setLoading(false);
         setLoadingMessage('');
+      } catch (error) {
+        console.error('加载待审核任务时出错:', error);
+        setNoTasks(true);
+        setLoading(false);
+        setLoadingMessage('加载任务时出错，请刷新页面');
       }
-
-      setPendingTasks(tasksToReview);
-    } catch (error) {
-      console.error('解析任务数据时出错:', error);
-      setLoadingMessage('加载任务时出错，请刷新页面重试');
-    }
-  }, [currentUser, partner, relationship, refreshKey]);
+    };
+    
+    loadPendingTasks();
+  }, [isAuthenticated, router, currentUser, partner, relationship, refreshKey]);
 
   // 处理批准任务
   const handleApproveTask = (task: Todo) => {
@@ -129,7 +162,7 @@ export default function TaskReviewPage() {
         // 为任务创建者添加积分
         const awardPoints = reviewPoints || task.points;
         console.log('准备为创建者添加积分:', awardPoints);
-        addPoints(task.createdById, awardPoints, `完成任务 "${task.title}"`);
+        addPoints(task.createdById, awardPoints, `完成任务 "${task.title}"`, task.id);
         
         // 从待审核列表中移除该任务
         setPendingTasks(pendingTasks.filter(t => t.id !== task.id));
@@ -200,66 +233,6 @@ export default function TaskReviewPage() {
     }
   };
 
-  // 添加积分
-  const addPoints = (userId: string, points: number, reason: string) => {
-    if (!relationship) return;
-    
-    console.log('开始添加积分:', points, '给用户:', userId);
-    
-    // 从本地存储中获取积分历史
-    const storedPointHistory = localStorage.getItem('pointHistory');
-    let pointHistory = [];
-    let newTotalPoints = points;
-    
-    if (storedPointHistory) {
-      try {
-        pointHistory = JSON.parse(storedPointHistory, (key, value) => {
-          if (key === 'createdAt') {
-            return value ? new Date(value) : null;
-          }
-          return value;
-        });
-        
-        // 筛选该用户的积分历史
-        const userPointHistory = pointHistory.filter((ph: any) => ph.userId === userId);
-        
-        if (userPointHistory.length > 0) {
-          // 取最新的积分记录
-          const latestRecord = userPointHistory.sort((a: any, b: any) => 
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )[0];
-          
-          newTotalPoints = latestRecord.totalPoints + points;
-          console.log('用户当前总积分:', latestRecord.totalPoints, '添加后总积分:', newTotalPoints);
-        } else {
-          console.log('用户没有积分记录，从', points, '开始');
-        }
-      } catch (e) {
-        console.error('解析积分历史时出错:', e);
-      }
-    } else {
-      console.log('本地存储中没有积分历史数据');
-    }
-    
-    // 创建新的积分记录
-    const newPointRecord = {
-      id: Date.now().toString(),
-      userId,
-      relationshipId: relationship.id,
-      pointsChange: points,
-      totalPoints: newTotalPoints,
-      reason,
-      createdAt: new Date()
-    };
-    
-    console.log('创建新积分记录:', newPointRecord);
-    
-    // 更新积分历史
-    const updatedPointHistory = [...pointHistory, newPointRecord];
-    localStorage.setItem('pointHistory', JSON.stringify(updatedPointHistory));
-    console.log('积分历史已更新');
-  };
-
   // 格式化日期显示
   const formatDate = (date?: Date) => {
     if (!date) return '无日期';
@@ -269,11 +242,110 @@ export default function TaskReviewPage() {
   // 添加手动刷新功能
   const refreshData = () => {
     console.log('手动刷新数据...');
-    // 重新触发useEffect
-    setPendingTasks([]);
-    // 创建一个临时对象强制组件重新渲染
+    setLoadingMessage('正在刷新数据...');
+    setLoading(true);
+    
+    // 尝试直接从localStorage重新加载任务
+    try {
+      const storedTodos = localStorage.getItem('loveTodos');
+      if (storedTodos && currentUser && partner && relationship) {
+        const todos = JSON.parse(storedTodos, (key, value) => {
+          if (key === 'createdAt' || key === 'dueDate' || key === 'reviewedAt') {
+            return value ? new Date(value) : null;
+          }
+          return value;
+        });
+        
+        console.log('刷新：从localStorage加载任务总数:', todos.length);
+        
+        // 筛选待审核任务
+        const tasksToReview = todos.filter((todo: Todo) => {
+          const isPending = todo.reviewStatus === 'pending';
+          const isCreatedByPartner = todo.createdById === partner.id;
+          const belongsToCurrentRelationship = todo.relationshipId === relationship.id;
+          
+          if (isPending) {
+            console.log(`刷新：任务 "${todo.title}" (ID: ${todo.id}):`);
+            console.log(`- 创建者ID: ${todo.createdById}, 伴侣ID: ${partner.id}, 匹配: ${isCreatedByPartner}`);
+            console.log(`- 关系ID: ${todo.relationshipId}, 当前关系ID: ${relationship.id}, 匹配: ${belongsToCurrentRelationship}`);
+          }
+          
+          return isPending && isCreatedByPartner && belongsToCurrentRelationship;
+        });
+        
+        console.log('刷新：找到待审核任务数量:', tasksToReview.length);
+        if (tasksToReview.length > 0) {
+          console.log('刷新：待审核任务详情:');
+          tasksToReview.forEach((task: Todo) => {
+            console.log(JSON.stringify(task, null, 2));
+          });
+        }
+        
+        // 更新状态
+        setPendingTasks(tasksToReview);
+        setNoTasks(tasksToReview.length === 0);
+      } else {
+        console.log('刷新：无法从localStorage加载任务或缺少用户数据');
+        setNoTasks(true);
+      }
+    } catch (error) {
+      console.error('刷新数据时出错:', error);
+      setNoTasks(true);
+    }
+    
+    setLoading(false);
+    setLoadingMessage('');
+    
+    // 增加刷新键值触发useEffect
     setRefreshKey(prev => prev + 1);
   };
+
+  // 组件挂载时和手动刷新时自动保存状态
+  useEffect(() => {
+    // 保存当前任务状态到sessionStorage（保持页面刷新后的状态）
+    if (pendingTasks.length > 0) {
+      try {
+        sessionStorage.setItem('pendingReviewTasks', JSON.stringify(pendingTasks));
+        console.log('已保存待审核任务到sessionStorage:', pendingTasks.length);
+      } catch (error) {
+        console.error('保存待审核任务到sessionStorage时出错:', error);
+      }
+    }
+  }, [pendingTasks]);
+
+  // 从sessionStorage恢复状态（用于页面刷新后）
+  useEffect(() => {
+    try {
+      const savedTasks = sessionStorage.getItem('pendingReviewTasks');
+      if (savedTasks && pendingTasks.length === 0 && !loading) {
+        const parsedTasks = JSON.parse(savedTasks);
+        console.log('从sessionStorage恢复待审核任务:', parsedTasks.length);
+        setPendingTasks(parsedTasks);
+        setNoTasks(parsedTasks.length === 0);
+      }
+    } catch (error) {
+      console.error('从sessionStorage恢复待审核任务时出错:', error);
+    }
+  }, [loading, pendingTasks.length]);
+
+  // 页面卸载前确保更新localStorage
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (pendingTasks.length > 0) {
+        try {
+          sessionStorage.setItem('pendingReviewTasks', JSON.stringify(pendingTasks));
+          console.log('页面卸载前保存待审核任务到sessionStorage');
+        } catch (error) {
+          console.error('保存待审核任务时出错:', error);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [pendingTasks]);
 
   if (!isAuthenticated || !currentUser || !partner) {
     return (
@@ -295,6 +367,13 @@ export default function TaskReviewPage() {
         <header className="text-center mb-8">
           <h1 className="text-3xl font-bold text-love-600 dark:text-love-400 mb-2">待审核任务</h1>
           <p className="text-love-500 dark:text-love-300">审核您伴侣完成的爱的任务</p>
+          <button
+            className="btn btn-primary mt-4"
+            onClick={refreshData}
+            disabled={loading}
+          >
+            {loading ? '正在刷新...' : '刷新任务列表'}
+          </button>
         </header>
 
         {successMessage && (
@@ -387,7 +466,7 @@ export default function TaskReviewPage() {
                 <p className="text-gray-500 dark:text-gray-400">{loadingMessage}</p>
                 <div className="text-5xl mt-8">⏳</div>
               </div>
-            ) : pendingTasks.length === 0 ? (
+            ) : noTasks ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 dark:text-gray-400">暂无待审核任务</p>
                 <p className="text-gray-500 dark:text-gray-400 mt-2">当您的伴侣完成任务并提交审核后，会显示在这里</p>
@@ -417,12 +496,6 @@ export default function TaskReviewPage() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-bold text-love-500 dark:text-love-300">待审核任务 ({pendingTasks.length})</h2>
-                  <button 
-                    className="btn btn-sm btn-outline" 
-                    onClick={refreshData}
-                  >
-                    刷新数据
-                  </button>
                 </div>
                 
                 {pendingTasks.map(task => (

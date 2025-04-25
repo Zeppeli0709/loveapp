@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { usePoints } from '../contexts/PointsContext';
 import { Gift, RedeemedGift, PointHistory } from '../types';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -11,8 +12,7 @@ import Image from 'next/image';
  */
 export default function GiftsPage() {
   const { currentUser, partner, relationship } = useAuth();
-  const [totalPoints, setTotalPoints] = useState(0);
-  const [pointHistory, setPointHistory] = useState<PointHistory[]>([]);
+  const { totalPoints, pointHistory, deductPoints } = usePoints();
   const [gifts, setGifts] = useState<Gift[]>([]);
   const [redeemedGifts, setRedeemedGifts] = useState<RedeemedGift[]>([]);
   const [activeTab, setActiveTab] = useState<'catalog' | 'redeemed' | 'received'>('catalog');
@@ -21,7 +21,7 @@ export default function GiftsPage() {
   
   // 初始化礼物数据和加载已有数据
   useEffect(() => {
-    console.log("加载礼物和积分数据");
+    console.log("加载礼物数据");
     
     // 加载礼物目录
     const storedGifts = localStorage.getItem('gifts');
@@ -83,10 +83,12 @@ export default function GiftsPage() {
     
     // 加载已兑换的礼物
     loadRedeemedGifts();
-    
-    // 加载积分历史
-    loadPointHistory();
   }, []);
+  
+  // 调试用：监控积分变化
+  useEffect(() => {
+    console.log("当前总积分更新为:", totalPoints);
+  }, [totalPoints]);
   
   // 加载已兑换礼物
   const loadRedeemedGifts = () => {
@@ -108,65 +110,6 @@ export default function GiftsPage() {
       console.log("没有已兑换礼物数据");
     }
   };
-  
-  // 加载积分历史
-  const loadPointHistory = () => {
-    const storedPointHistory = localStorage.getItem('pointHistory');
-    if (storedPointHistory) {
-      try {
-        // 使用自定义JSON解析器来正确处理日期对象
-        const parsedHistory = JSON.parse(storedPointHistory, (key, value) => {
-          if (key === 'createdAt') {
-            return value ? new Date(value) : null;
-          }
-          return value;
-        });
-        setPointHistory(parsedHistory);
-        console.log("加载积分历史完成", parsedHistory.length);
-        
-        // 计算当前用户的总积分
-        if (currentUser) {
-          updateUserTotalPoints(parsedHistory, currentUser.id);
-        }
-      } catch (e) {
-        console.error('解析积分历史时出错:', e);
-        // 初始化为空数组，避免错误
-        setPointHistory([]);
-      }
-    } else {
-      console.log("没有积分历史数据");
-      setPointHistory([]);
-    }
-  };
-  
-  // 计算用户总积分
-  const updateUserTotalPoints = (historyRecords: PointHistory[], userId: string) => {
-    const userPointHistory = historyRecords.filter(ph => ph.userId === userId);
-    if (userPointHistory.length > 0) {
-      // 按时间排序，获取最新的积分记录
-      const latestRecord = userPointHistory.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )[0];
-      console.log("更新用户总积分:", latestRecord.totalPoints, "基于积分记录ID:", latestRecord.id);
-      setTotalPoints(latestRecord.totalPoints);
-    } else {
-      console.log("用户没有积分记录，设置为0");
-      setTotalPoints(0);
-    }
-  };
-  
-  // 当用户变更时重新计算积分
-  useEffect(() => {
-    if (currentUser && pointHistory.length > 0) {
-      console.log("用户变更，重新计算积分");
-      updateUserTotalPoints(pointHistory, currentUser.id);
-    }
-  }, [currentUser, pointHistory]);
-  
-  // 调试用：监控积分变化
-  useEffect(() => {
-    console.log("当前总积分更新为:", totalPoints);
-  }, [totalPoints]);
   
   // 筛选当前关系的已兑换礼物
   const filteredRedeemedGifts = redeemedGifts.filter(rg => {
@@ -210,52 +153,11 @@ export default function GiftsPage() {
       gift: gift
     };
     
-    // 扣除积分并更新积分历史
-    const newTotalPoints = totalPoints - gift.requiredPoints;
-    
-    // 创建新的积分记录
-    const newPointRecord: PointHistory = {
-      id: Date.now().toString(),
-      userId: currentUser.id,
-      relationshipId: relationship.id,
-      pointsChange: -gift.requiredPoints,
-      totalPoints: newTotalPoints,
-      reason: `兑换礼物: ${gift.name}`,
-      createdAt: new Date()
-    };
-    
     try {
-      // 先从localStorage获取最新的积分历史
-      const storedPointHistory = localStorage.getItem('pointHistory');
-      let currentPointHistory = [];
+      // 使用PointsContext的deductPoints函数扣除积分
+      deductPoints(currentUser.id, gift.requiredPoints, `兑换礼物: ${gift.name}`);
       
-      if (storedPointHistory) {
-        try {
-          // 使用自定义JSON解析器处理日期
-          currentPointHistory = JSON.parse(storedPointHistory, (key, value) => {
-            if (key === 'createdAt') {
-              return value ? new Date(value) : null;
-            }
-            return value;
-          });
-        } catch (e) {
-          console.error("解析积分历史出错:", e);
-          currentPointHistory = [];
-        }
-      }
-      
-      // 合并当前状态和localStorage中的积分历史
-      const updatedPointHistory = [...currentPointHistory, newPointRecord];
-      
-      // 保存回localStorage
-      localStorage.setItem('pointHistory', JSON.stringify(updatedPointHistory));
-      setPointHistory(updatedPointHistory);
-      console.log("积分已扣除，新总积分:", newTotalPoints);
-      
-      // 直接更新总积分显示
-      setTotalPoints(newTotalPoints);
-      
-      // 更新已兑换礼物列表 - 同样先获取最新数据
+      // 更新已兑换礼物列表
       const storedRedeemedGifts = localStorage.getItem('redeemedGifts');
       let currentRedeemedGifts = [];
       

@@ -36,6 +36,8 @@ export interface Todo {
     reviewedAt?: Date;
     /** 审核评论 */
     reviewComment?: string;
+    /** 最后更新时间，用于同步 */
+    lastUpdatedAt?: Date;
 }
 
 /**

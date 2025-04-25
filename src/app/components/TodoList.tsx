@@ -138,32 +138,12 @@ export default function TodoList() {
       relationshipId: relationship.id,
       isShared: true,
       points,
-      reviewStatus: 'not_submitted'
+      reviewStatus: 'not_submitted',
+      lastUpdatedAt: new Date()
     };
     
-    // 从localStorage获取最新的待办事项
-    const storedTodos = localStorage.getItem('loveTodos');
-    let currentTodos = [];
-    
-    if (storedTodos) {
-      try {
-        // 使用自定义JSON解析器处理日期
-        currentTodos = JSON.parse(storedTodos, (key, value) => {
-          if (key === 'createdAt' || key === 'dueDate' || key === 'reviewedAt') {
-            return value ? new Date(value) : null;
-          }
-          return value;
-        });
-      } catch (e) {
-        console.error("解析待办事项出错:", e);
-        currentTodos = [...todos]; // 使用当前状态作为备份
-      }
-    } else {
-      currentTodos = [...todos];
-    }
-    
     // 添加新待办事项
-    const updatedTodos = [...currentTodos, newTodo];
+    const updatedTodos = [...todos, newTodo];
     
     // 保存回localStorage
     localStorage.setItem('loveTodos', JSON.stringify(updatedTodos));
@@ -256,30 +236,16 @@ export default function TodoList() {
   
   // 编辑待办事项
   const editTodo = (editedTodo: Todo) => {
-    // 从localStorage获取最新的待办事项
-    const storedTodos = localStorage.getItem('loveTodos');
-    let currentTodos = [];
-    
-    if (storedTodos) {
-      try {
-        currentTodos = JSON.parse(storedTodos, (key, value) => {
-          if (key === 'createdAt' || key === 'dueDate' || key === 'reviewedAt') {
-            return value ? new Date(value) : null;
-          }
-          return value;
-        });
-      } catch (e) {
-        console.error("解析待办事项出错:", e);
-        currentTodos = [...todos]; // 使用当前状态作为备份
-      }
-    } else {
-      currentTodos = [...todos];
-    }
+    // 确保更新lastUpdatedAt字段
+    const todoWithUpdatedTime = {
+      ...editedTodo,
+      lastUpdatedAt: new Date()
+    };
     
     // 更新待办事项
-    const updatedTodos = currentTodos.map((todo: Todo) => {
-      if (todo.id === editedTodo.id) {
-        return editedTodo;
+    const updatedTodos = todos.map((todo: Todo) => {
+      if (todo.id === todoWithUpdatedTime.id) {
+        return todoWithUpdatedTime;
       }
       return todo;
     });
@@ -314,11 +280,14 @@ export default function TodoList() {
     // 更新任务状态为待审核
     const updatedTodos = todos.map(todo => {
       if (todo.id === todoId) {
+        // 确保所有必要的字段都被正确设置
         const updatedTask = { 
           ...todo, 
           reviewStatus: 'pending' as const,
-          // 确保relationshipId正确设置
-          relationshipId: relationship.id
+          relationshipId: relationship.id,
+          isShared: true, // 确保任务是共享的
+          completed: true, // 标记为已完成
+          lastUpdatedAt: new Date() // 添加最后更新时间字段，用于跟踪变化
         };
         console.log("更新后的任务:", updatedTask);
         return updatedTask;
@@ -326,104 +295,158 @@ export default function TodoList() {
       return todo;
     });
     
-    // 首先确保从localStorage获取最新的任务列表
-    const storedTodos = localStorage.getItem('loveTodos');
-    if (storedTodos) {
-      try {
-        // 从本地存储中获取所有任务
-        const allTodos = JSON.parse(storedTodos, (key, value) => {
-          if (key === 'createdAt' || key === 'dueDate' || key === 'reviewedAt') {
-            return value ? new Date(value) : null;
-          }
-          return value;
-        });
-        
-        // 合并当前状态和localStorage中的任务
-        // 将要更新的任务加入到allTodos中
-        const mergedTodos = allTodos.map((todo: Todo) => {
-          const updatedTodo = updatedTodos.find(t => t.id === todo.id);
-          return updatedTodo || todo;
-        });
-        
-        // 检查是否存在要更新的任务不在allTodos中的情况
-        const newTodos = updatedTodos.filter(todo => 
-          !allTodos.some((t: Todo) => t.id === todo.id)
-        );
-        
-        // 合并结果
-        const finalTodos = [...mergedTodos, ...newTodos];
-        
-        // 保存回localStorage
-        localStorage.setItem('loveTodos', JSON.stringify(finalTodos));
-        console.log("任务已提交审核，等待伴侣审核");
-        
-        // 更新组件状态
-        setTodos(finalTodos);
-        
-        // 显示成功提示
-        alert(`任务"${taskToSubmit.title}"已提交审核，等待伴侣审核`);
-      } catch (e) {
-        console.error("合并任务数据出错:", e);
-        alert("提交审核时出错，请重试");
-      }
-    } else {
-      // 如果localStorage中没有任务，直接保存
-      localStorage.setItem('loveTodos', JSON.stringify(updatedTodos));
-      setTodos(updatedTodos);
-      console.log("任务已提交审核，等待伴侣审核");
-      
-      // 显示成功提示
-      alert(`任务"${taskToSubmit.title}"已提交审核，等待伴侣审核`);
-    }
+    // 保存到localStorage
+    localStorage.setItem('loveTodos', JSON.stringify(updatedTodos));
+    
+    // 更新组件状态
+    setTodos(updatedTodos);
+    
+    // 如果有在线数据库，这里可以添加同步到云端的代码
+    
+    // 显示成功提示
+    alert(`任务"${taskToSubmit.title}"已提交审核，等待伴侣审核`);
+    console.log("任务已提交审核，等待伴侣审核");
   };
 
   // 审核批准待办事项
-  const approveTask = (todoId: string, points: number, comment?: string) => {
-    if (!currentUser || !relationship) return;
+  const approveTask = (id: string, comment: string, points: number) => {
+    // 获取当前用户ID
+    const userId = currentUser?.id;
+    if (!userId) {
+      alert('请先登录');
+      return;
+    }
+
+    // 查找要审核的任务
+    const taskToApprove = todos.find(todo => todo.id === id);
+    if (!taskToApprove) {
+      console.log('找不到要审核的任务');
+      return;
+    }
+
+    // 验证是否为任务创建者（创建者不能审核自己的任务）
+    if (taskToApprove.createdById === userId) {
+      alert('您不能审核自己创建的任务');
+      return;
+    }
+
+    // 验证任务状态是否为待审核
+    if (taskToApprove.reviewStatus !== 'pending') {
+      alert('只有待审核状态的任务可以被批准');
+      return;
+    }
+
+    // 从本地存储获取最新任务列表以确保数据一致性
+    const storedTodosJson = localStorage.getItem('loveTodos');
+    let storedTodos: Todo[] = storedTodosJson ? JSON.parse(storedTodosJson) : [];
 
     // 更新任务状态
     const updatedTodos = todos.map(todo => {
-      if (todo.id === todoId) {
+      if (todo.id === id) {
         return {
           ...todo,
           reviewStatus: 'approved' as const,
-          points: points,
-          reviewerId: currentUser.id,
+          reviewComment: comment,
+          reviewerId: userId,
           reviewedAt: new Date(),
-          reviewComment: comment
+          points: points // 更新任务的积分
         };
       }
       return todo;
     });
-    
+
+    // 合并本地存储和内存中的任务列表
+    const mergedTodos = storedTodos.map(storedTodo => {
+      const updatedTodo = updatedTodos.find(t => t.id === storedTodo.id);
+      return updatedTodo || storedTodo;
+    });
+
+    // 将内存中的新任务添加到合并列表
+    updatedTodos.forEach(todo => {
+      if (!mergedTodos.some(t => t.id === todo.id)) {
+        mergedTodos.push(todo);
+      }
+    });
+
+    // 更新状态和本地存储
     setTodos(updatedTodos);
+    localStorage.setItem('loveTodos', JSON.stringify(mergedTodos));
     
-    // 找到被批准的任务
-    const approvedTodo = updatedTodos.find(t => t.id === todoId);
-    if (approvedTodo) {
-      // 为任务创建者添加积分
-      addPoints(approvedTodo.createdById, points, `完成任务 "${approvedTodo.title}"`, todoId);
+    // 为任务创建者添加积分
+    if (taskToApprove.createdById) {
+      addPoints(taskToApprove.createdById, points, `完成任务 "${taskToApprove.title}"`, id);
     }
+    
+    console.log(`任务 ${id} 已被批准`);
+    alert(`任务已批准并奖励 ${points} 积分！`);
   };
 
   // 审核拒绝待办事项
-  const rejectTask = (todoId: string, comment: string) => {
-    if (!currentUser) return;
+  const rejectTask = (id: string, comment: string) => {
+    // 获取当前用户ID
+    const userId = currentUser?.id;
+    if (!userId) {
+      alert('请先登录');
+      return;
+    }
+
+    // 查找要拒绝的任务
+    const taskToReject = todos.find(todo => todo.id === id);
+    if (!taskToReject) {
+      console.log('找不到要拒绝的任务');
+      return;
+    }
+
+    // 验证是否为任务创建者（创建者不能审核自己的任务）
+    if (taskToReject.createdById === userId) {
+      alert('您不能审核自己创建的任务');
+      return;
+    }
+
+    // 验证任务状态是否为待审核
+    if (taskToReject.reviewStatus !== 'pending') {
+      alert('只有待审核状态的任务可以被拒绝');
+      return;
+    }
+
+    // 从本地存储获取最新任务列表以确保数据一致性
+    const storedTodosJson = localStorage.getItem('loveTodos');
+    let storedTodos: Todo[] = storedTodosJson ? JSON.parse(storedTodosJson) : [];
+
+    // 更新任务状态
+    const updatedTodos = todos.map(todo => {
+      if (todo.id === id) {
+        return {
+          ...todo,
+          reviewStatus: 'rejected' as const,
+          reviewComment: comment,
+          reviewerId: userId,
+          reviewedAt: new Date(),
+          completed: false // 设置为未完成状态
+        };
+      }
+      return todo;
+    });
+
+    // 合并本地存储和内存中的任务列表
+    const mergedTodos = storedTodos.map(storedTodo => {
+      const updatedTodo = updatedTodos.find(t => t.id === storedTodo.id);
+      return updatedTodo || storedTodo;
+    });
+
+    // 将内存中的新任务添加到合并列表
+    updatedTodos.forEach(todo => {
+      if (!mergedTodos.some(t => t.id === todo.id)) {
+        mergedTodos.push(todo);
+      }
+    });
+
+    // 更新状态和本地存储
+    setTodos(updatedTodos);
+    localStorage.setItem('loveTodos', JSON.stringify(mergedTodos));
     
-    setTodos(
-      todos.map(todo => {
-        if (todo.id === todoId) {
-          return {
-            ...todo,
-            reviewStatus: 'rejected' as const,
-            reviewerId: currentUser.id,
-            reviewedAt: new Date(),
-            reviewComment: comment
-          };
-        }
-        return todo;
-      })
-    );
+    console.log(`任务 ${id} 已被拒绝`);
+    alert('任务已被拒绝');
   };
 
   // 添加积分
@@ -463,6 +486,48 @@ export default function TodoList() {
     }
   };
 
+  // 扣除积分
+  const deductPoints = (userId: string, pointsToDeduct: number, reason: string) => {
+    if (!relationship || pointsToDeduct <= 0) return;
+    
+    // 计算新的总积分
+    const userPointHistory = pointHistory.filter(ph => ph.userId === userId);
+    let currentPoints = 0;
+    
+    if (userPointHistory.length > 0) {
+      // 取最新的积分记录
+      const latestRecord = userPointHistory.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )[0];
+      currentPoints = latestRecord.totalPoints;
+    }
+    
+    // 确保不会扣成负数
+    const actualDeduction = Math.min(pointsToDeduct, currentPoints);
+    const newTotalPoints = currentPoints - actualDeduction;
+    
+    // 创建新的积分记录
+    const newPointRecord: PointHistory = {
+      id: Date.now().toString(),
+      userId,
+      relationshipId: relationship.id,
+      pointsChange: -actualDeduction, // 负值表示扣除
+      totalPoints: newTotalPoints,
+      reason: reason,
+      createdAt: new Date()
+    };
+    
+    // 更新积分历史
+    setPointHistory([...pointHistory, newPointRecord]);
+    
+    // 如果是当前用户，更新显示的总积分
+    if (userId === currentUser?.id) {
+      setTotalPoints(newTotalPoints);
+    }
+    
+    return actualDeduction; // 返回实际扣除的积分
+  };
+
   // 根据筛选条件过滤待办事项
   const filteredTodos = todos
     // 按关系ID筛选
@@ -492,6 +557,37 @@ export default function TodoList() {
       if (reviewFilter === 'all') return true;
       return todo.reviewStatus === reviewFilter;
     });
+
+  // 在组件挂载或relationship变化时，设置定期同步
+  useEffect(() => {
+    if (!relationship) return;
+    
+    // 每60秒从localStorage读取一次数据，确保双方数据同步
+    const syncInterval = setInterval(() => {
+      const storedTodos = localStorage.getItem('loveTodos');
+      if (storedTodos) {
+        try {
+          const parsedTodos = JSON.parse(storedTodos, (key, value) => {
+            if (key === 'createdAt' || key === 'dueDate' || key === 'reviewedAt' || key === 'lastUpdatedAt') {
+              return value ? new Date(value) : null;
+            }
+            return value;
+          });
+          
+          // 仅当数据有变化时才更新状态
+          if (JSON.stringify(parsedTodos) !== JSON.stringify(todos)) {
+            console.log("同步数据：发现新的待办事项变更");
+            setTodos(parsedTodos);
+          }
+        } catch (e) {
+          console.error("同步数据出错:", e);
+        }
+      }
+    }, 60000); // 60秒
+    
+    // 组件卸载时清除定时器
+    return () => clearInterval(syncInterval);
+  }, [relationship, todos]);
 
   if (!currentUser || !relationship) {
     return (
@@ -526,29 +622,46 @@ export default function TodoList() {
         </div>
         
         {/* 添加新待办事项表单 */}
-        <div className="card bg-love-100 dark:bg-gray-700 shadow p-4 mb-6">
-          <div className="form-control">
-            <input
-              type="text"
-              placeholder="添加新的爱的待办事项"
-              className="input input-bordered border-love-300 dark:border-love-600 focus:border-love-500 mb-2 dark:bg-gray-600 dark:text-white"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-            />
-            <textarea
-              placeholder="描述（可选）"
-              className="textarea textarea-bordered border-love-300 dark:border-love-600 focus:border-love-500 mb-2 dark:bg-gray-600 dark:text-white"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-            />
+        <div className="card bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">添加新的爱的待办事项</h3>
+          <form onSubmit={addTodo} className="space-y-5">
+            {/* 标题输入 */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium text-gray-700 dark:text-gray-300">标题</span>
+              </label>
+              <input
+                type="text"
+                placeholder="输入待办事项标题"
+                className="input input-bordered w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:border-love-500 dark:focus:border-love-400 focus:ring-2 focus:ring-love-200 dark:focus:ring-love-900"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                required
+              />
+            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
-              <div>
+            {/* 描述输入 */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium text-gray-700 dark:text-gray-300">描述</span>
+              </label>
+              <textarea
+                placeholder="添加详细描述（可选）"
+                className="textarea textarea-bordered w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:border-love-500 dark:focus:border-love-400 focus:ring-2 focus:ring-love-200 dark:focus:ring-love-900"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+            
+            {/* 两列布局：优先级和截止日期 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="form-control">
                 <label className="label">
-                  <span className="label-text text-love-700">优先级</span>
+                  <span className="label-text font-medium text-gray-700 dark:text-gray-300">优先级</span>
                 </label>
                 <select
-                  className="select select-bordered w-full"
+                  className="select select-bordered w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:border-love-500 dark:focus:border-love-400"
                   value={priority}
                   onChange={e => setPriority(e.target.value as 'low' | 'medium' | 'high')}
                 >
@@ -558,26 +671,27 @@ export default function TodoList() {
                 </select>
               </div>
               
-              <div>
+              <div className="form-control">
                 <label className="label">
-                  <span className="label-text text-love-700">截止日期</span>
+                  <span className="label-text font-medium text-gray-700 dark:text-gray-300">截止日期</span>
                 </label>
                 <input
                   type="date"
-                  className="input input-bordered w-full"
+                  className="input input-bordered w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:border-love-500 dark:focus:border-love-400"
                   value={dueDate}
                   onChange={e => setDueDate(e.target.value)}
                 />
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div>
+            {/* 三列布局：关联对象、爱的类型和积分 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="form-control">
                 <label className="label">
-                  <span className="label-text text-love-700">关联对象</span>
+                  <span className="label-text font-medium text-gray-700 dark:text-gray-300">关联对象</span>
                 </label>
                 <select
-                  className="select select-bordered w-full"
+                  className="select select-bordered w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:border-love-500 dark:focus:border-love-400"
                   value={partnerTag}
                   onChange={e => setPartnerTag(e.target.value as 'self' | 'partner' | 'both')}
                 >
@@ -587,12 +701,12 @@ export default function TodoList() {
                 </select>
               </div>
               
-              <div>
+              <div className="form-control">
                 <label className="label">
-                  <span className="label-text text-love-700">爱的类型</span>
+                  <span className="label-text font-medium text-gray-700 dark:text-gray-300">爱的类型</span>
                 </label>
                 <select
-                  className="select select-bordered w-full"
+                  className="select select-bordered w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:border-love-500 dark:focus:border-love-400"
                   value={loveType}
                   onChange={e => setLoveType(e.target.value as 'gift' | 'date' | 'care' | 'message' | 'other')}
                 >
@@ -604,84 +718,102 @@ export default function TodoList() {
                 </select>
               </div>
               
-              <div>
+              <div className="form-control">
                 <label className="label">
-                  <span className="label-text text-love-700">完成积分 (1-100)</span>
+                  <span className="label-text font-medium text-gray-700 dark:text-gray-300">完成积分</span>
                 </label>
                 <input
                   type="number"
                   min="1"
                   max="100"
-                  className="input input-bordered w-full"
+                  className="input input-bordered w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:border-love-500 dark:focus:border-love-400"
                   value={points}
                   onChange={e => setPoints(Number(e.target.value))}
                 />
               </div>
             </div>
             
-            <button
-              className="btn btn-primary bg-love-500 hover:bg-love-600 border-none dark:bg-love-600 dark:hover:bg-love-700"
-              onClick={addTodo}
-            >
-              添加爱的待办
-            </button>
-          </div>
+            {/* 提交按钮 */}
+            <div className="form-control mt-6">
+              <button
+                type="submit"
+                className="btn btn-primary bg-love-500 hover:bg-love-600 text-white border-none h-12 font-medium"
+              >
+                添加爱的待办
+              </button>
+            </div>
+          </form>
         </div>
         
         {/* 筛选控件 */}
-        <div className="flex flex-wrap gap-2 justify-between mb-6">
-          <div className="flex-1 min-w-[120px]">
-            <select
-              className="select select-bordered w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              value={filter}
-              onChange={e => setFilter(e.target.value as 'all' | 'active' | 'completed')}
-            >
-              <option value="all">所有状态</option>
-              <option value="active">待完成</option>
-              <option value="completed">已完成</option>
-            </select>
-          </div>
-          
-          <div className="flex-1 min-w-[120px]">
-            <select
-              className="select select-bordered w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              value={tagFilter}
-              onChange={e => setTagFilter(e.target.value as 'all' | 'self' | 'partner' | 'both')}
-            >
-              <option value="all">所有对象</option>
-              <option value="self">我的</option>
-              <option value="partner">伴侣的</option>
-              <option value="both">共同的</option>
-            </select>
-          </div>
-          
-          <div className="flex-1 min-w-[120px]">
-            <select
-              className="select select-bordered w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value as 'all' | 'gift' | 'date' | 'care' | 'message' | 'other')}
-            >
-              <option value="all">所有类型</option>
-              <option value="gift">礼物</option>
-              <option value="date">约会</option>
-              <option value="care">关心</option>
-              <option value="message">消息</option>
-              <option value="other">其他</option>
-            </select>
-          </div>
-          
-          <div className="flex-1 min-w-[120px]">
-            <select
-              className="select select-bordered w-full dark:bg-gray-700 dark:text-white dark:border-gray-600"
-              value={reviewFilter}
-              onChange={e => setReviewFilter(e.target.value as 'all' | 'pending' | 'approved' | 'rejected' | 'not_submitted')}
-            >
-              <option value="all">所有审核状态</option>
-              <option value="pending">等待审核</option>
-              <option value="approved">已批准</option>
-              <option value="rejected">已拒绝</option>
-              <option value="not_submitted">未提交</option>
-            </select>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6 border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">筛选待办事项</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium text-gray-700 dark:text-gray-300">完成状态</span>
+              </label>
+              <select
+                className="select select-bordered w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                value={filter}
+                onChange={e => setFilter(e.target.value as 'all' | 'active' | 'completed')}
+              >
+                <option value="all">所有状态</option>
+                <option value="active">待完成</option>
+                <option value="completed">已完成</option>
+              </select>
+            </div>
+            
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium text-gray-700 dark:text-gray-300">关联对象</span>
+              </label>
+              <select
+                className="select select-bordered w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                value={tagFilter}
+                onChange={e => setTagFilter(e.target.value as 'all' | 'self' | 'partner' | 'both')}
+              >
+                <option value="all">所有对象</option>
+                <option value="self">我的</option>
+                <option value="partner">伴侣的</option>
+                <option value="both">共同的</option>
+              </select>
+            </div>
+            
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium text-gray-700 dark:text-gray-300">爱的类型</span>
+              </label>
+              <select
+                className="select select-bordered w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                value={typeFilter}
+                onChange={e => setTypeFilter(e.target.value as 'all' | 'gift' | 'date' | 'care' | 'message' | 'other')}
+              >
+                <option value="all">所有类型</option>
+                <option value="gift">礼物</option>
+                <option value="date">约会</option>
+                <option value="care">关心</option>
+                <option value="message">消息</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+            
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text text-sm font-medium text-gray-700 dark:text-gray-300">审核状态</span>
+              </label>
+              <select
+                className="select select-bordered w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                value={reviewFilter}
+                onChange={e => setReviewFilter(e.target.value as 'all' | 'pending' | 'approved' | 'rejected' | 'not_submitted')}
+              >
+                <option value="all">所有审核状态</option>
+                <option value="pending">等待审核</option>
+                <option value="approved">已批准</option>
+                <option value="rejected">已拒绝</option>
+                <option value="not_submitted">未提交</option>
+              </select>
+            </div>
           </div>
         </div>
         
